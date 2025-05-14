@@ -1,8 +1,10 @@
 package net.ilyass.jpademo.service;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import lombok.RequiredArgsConstructor;
@@ -10,6 +12,7 @@ import net.ilyass.jpademo.dto.TaskRequest;
 import net.ilyass.jpademo.entity.Task;
 import net.ilyass.jpademo.entity.Task.TaskStatus; 
 import net.ilyass.jpademo.entity.User;
+import net.ilyass.jpademo.entity.Role;
 import net.ilyass.jpademo.repository.TaskRepository;
 
 @Service
@@ -32,14 +35,25 @@ public class TaskService {
 
     public Task createTask(TaskRequest request) {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        User user = userService.findByEmail(email)
-                .orElseThrow(() -> new RuntimeException("User mkynch"));
+        User currentUser = userService.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found"));
 
         Task task = new Task();
         task.setTitle(request.getTitle());
         task.setDescription(request.getDescription());
         task.setStatus(request.getStatus());
-        task.setAssignedUser(user);
+
+        // If assignedUserId is provided but user is not admin, throw exception
+        if (request.getAssignedUserId() != null && currentUser.getRole() != Role.ADMIN) {
+            throw new AccessDeniedException("Normal users cannot assign tasks to other users");
+        }
+
+        if (currentUser.getRole() == Role.ADMIN && request.getAssignedUserId() != null) {
+            User assignedUser = userService.findById(request.getAssignedUserId());
+            task.setAssignedUser(assignedUser);
+        } else {
+            task.setAssignedUser(currentUser);
+        }
 
         return taskRepository.save(task);
     }

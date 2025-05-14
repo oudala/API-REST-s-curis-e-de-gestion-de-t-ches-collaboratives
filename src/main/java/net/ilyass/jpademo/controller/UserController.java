@@ -10,12 +10,17 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
+@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "User Management", description = "Endpoints for managing user accounts")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -41,6 +46,7 @@ public class UserController {
         return ResponseEntity.ok(mapToUserResponse(user));
     }
 
+    @Operation(summary = "Get user by ID", description = "Returns user details by ID. Admin access only.")
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserResponse> getUserById(@PathVariable Long id) {
@@ -48,6 +54,7 @@ public class UserController {
         return ResponseEntity.ok(mapToUserResponse(user));
     }
 
+    @Operation(summary = "Get all users", description = "Returns list of all users. Admin access only.")
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<UserResponse>> getAllUsers() {
@@ -57,6 +64,7 @@ public class UserController {
         return ResponseEntity.ok(users);
     }
 
+    @Operation(summary = "Update user", description = "Update user details. Admin access only.")
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or @userSecurity.isUserOwner(#id)")
     public ResponseEntity<Void> updateUser(@PathVariable Long id, @RequestBody UserRequest request) {
@@ -70,6 +78,7 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
+    @Operation(summary = "Delete user", description = "Delete user by ID. Admin access only.")
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {

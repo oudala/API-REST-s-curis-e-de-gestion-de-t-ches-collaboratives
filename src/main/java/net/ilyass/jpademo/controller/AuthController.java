@@ -15,14 +15,30 @@ import net.ilyass.jpademo.entity.User;
 import net.ilyass.jpademo.service.AuthService;
 import net.ilyass.jpademo.service.UserService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentication", description = "Authentication endpoints for login and registration")
 @RequiredArgsConstructor
 public class AuthController {
 
     private final AuthService authService;
     private final UserService userService;
 
+    @Operation(
+        summary = "Register new user", 
+        description = "Create a new user account with USER or ADMIN role",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "User successfully registered"),
+            @ApiResponse(responseCode = "400", description = "Invalid input or email already exists",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+        }
+    )
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody RegisterRequest request) {
         try {
@@ -41,6 +57,15 @@ public class AuthController {
         }
     }
 
+    @Operation(
+        summary = "User login", 
+        description = "Authenticate user and return JWT token",
+        responses = {
+            @ApiResponse(responseCode = "200", description = "Login successful", 
+                    content = @Content(schema = @Schema(implementation = AuthResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials")
+        }
+    )
     @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody AuthRequest request) {
         return ResponseEntity.ok(authService.login(request));

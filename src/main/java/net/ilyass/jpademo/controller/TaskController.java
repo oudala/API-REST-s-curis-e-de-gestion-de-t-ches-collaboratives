@@ -13,6 +13,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import jakarta.validation.Valid;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import net.ilyass.jpademo.dto.TaskRequest;
 import net.ilyass.jpademo.dto.TaskResponse;
@@ -22,11 +27,14 @@ import net.ilyass.jpademo.service.TaskService;
 
 @RestController
 @RequestMapping("/api/tasks")
+@Tag(name = "Task Management", description = "API endpoints for managing user tasks")
+@SecurityRequirement(name = "bearerAuth")
 @RequiredArgsConstructor
 public class TaskController {
 
     private final TaskService taskService;
 
+    @Operation(summary = "Get all tasks", description = "Retrieves all tasks in the system. Only accessible by admins.")
     @GetMapping("/all")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<TaskResponse>> getAllTasks() {
@@ -55,21 +63,51 @@ public class TaskController {
         return response;
     }
 
+    @Operation(summary = "Get user's tasks", description = "Retrieves all tasks assigned to the currently logged-in user")
     @GetMapping
     @PreAuthorize("hasRole('USER')")
     public ResponseEntity<List<Task>> getUserTasks() {
         return ResponseEntity.ok(taskService.getUserTasks());
     }
 
+    @Operation(summary = "Create a new task", description = """
+        Creates a new task with different behavior based on user role:
+        
+        For ADMIN users:
+        - Can create tasks and assign them to any user
+        - Must include assignedUserId in request to assign to specific user
+        - If no assignedUserId provided, task is assigned to admin
+        
+        For normal users:
+        - Can only create tasks assigned to themselves
+        - assignedUserId is ignored if provided
+        
+        Example for ADMIN:
+        {
+          "title": "stage pfe",
+          "description": "final task",
+          "status": "À_FAIRE",
+          "assignedUserId": 2
+        }
+        
+        Example for normal user:
+        {
+          "title": "student",
+          "description": "stage pfe", 
+          "status": "À_FAIRE"
+        }
+        """)
     @PostMapping
-    public ResponseEntity<Task> createTask(@RequestBody TaskRequest request) {
+    public ResponseEntity<Task> createTask(@RequestBody @Valid TaskRequest request) {
         return ResponseEntity.ok(taskService.createTask(request));
     }
 
+    @Operation(summary = "Update task status", 
+              description = "Updates the status of a task. Only the assigned user can update their own tasks.")
     @PutMapping("/{taskId}/status")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Task> updateTaskStatus(
-            @PathVariable Long taskId,
+            @Parameter(description = "ID of the task to update") @PathVariable Long taskId,
             @RequestBody TaskStatusRequest request) {
         return ResponseEntity.ok(taskService.updateTaskStatus(taskId, request.getStatus()));
     }
